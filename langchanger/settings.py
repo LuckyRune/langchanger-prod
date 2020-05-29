@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'django_summernote',
     'rest_framework',
+    'webpack_loader',
     'rest_framework.authtoken',
     'djoser',
 
@@ -142,6 +143,12 @@ MEDIA_URL = '/media/'
 
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+WEBPACK_LOADER = {
+    'DEFAULT': {
+        'BUNDLE_DIR_NAME': 'dist/',
+        'STATS_FILE': os.path.join(BASE_DIR, 'langchanger-vue', 'webpack-stats.json')
+    }
+}
 
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
