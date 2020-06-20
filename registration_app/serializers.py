@@ -1,7 +1,7 @@
 from rest_framework import serializers
 
 from .models import *
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
 from file_app.serializers import AchievementIconSerializer, UserIconSerializer
 
 
@@ -60,6 +60,21 @@ class RateUserSerializer(serializers.ModelSerializer):
         fields = ('id', 'username', 'rate', 'user_profile')
 
 
+class GroupSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Group
+        fields = ('name', )
+
+
+class MainUserInfoSerializer(serializers.ModelSerializer):
+    user_profile = IconUserProfileSerializer()
+
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'user_profile', 'is_staff')
+
+
 class PostUserProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -98,3 +113,17 @@ class RegisterUserSerializer(serializers.ModelSerializer):
 
         return user
 
+
+class BlacklistSerializer(serializers.ModelSerializer):
+    user = RateUserSerializer()
+
+    class Meta:
+        model = Blacklist
+        fields = ('user', )
+
+
+class PostBlacklistSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Blacklist
+        fields = ('user', )

@@ -1,21 +1,15 @@
-from django.shortcuts import get_object_or_404, get_list_or_404
-from django.db.models import Q, Sum, F, Value, IntegerField
-from django.http import Http404
-from django.contrib.auth.models import User
-
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import permissions
-from rest_framework.renderers import JSONRenderer
+from django.db.models import Value, IntegerField
+from django.shortcuts import get_list_or_404
 from rest_framework.generics import ListAPIView
+from rest_framework.renderers import JSONRenderer
+from rest_framework.response import Response
+from rest_framework.views import APIView
 
-from .models import *
-from .serializers import *
-from registration_app.serializers import RateUserSerializer
-
-from file_app.serializers import VersionFileSerializer
-from file_app.models import VersionFile
 from file_app.bot import send_file
+from file_app.models import VersionFile
+from file_app.serializers import VersionFileSerializer
+from registration_app.permissions import *
+from .serializers import *
 
 
 def paginator(request, queryset):
@@ -129,6 +123,50 @@ class OneOriginView(APIView):
         return Response(content)
 
 
+class ReadOriginView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    renderer_classes = [JSONRenderer]
+
+    def get(self, request):
+        pk = int(request.GET.get('origin', -1))
+
+        origin = get_object_or_404(Origin, pk=pk)
+        serializer = ReadOriginSerializer(origin)
+
+        content = {'data': serializer.data}
+
+        return Response(content)
+
+
+class SearchOriginView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    renderer_classes = [JSONRenderer]
+
+    def get(self, request):
+        search_sentence = request.GET.get('sentence')
+
+        queryset_by_title = Origin.objects.filter(title__icontains=search_sentence)
+        queryset_by_author = Origin.objects.filter(author__icontains=search_sentence)
+        queryset_by_description = Origin.objects.filter(description__icontains=search_sentence)
+
+        queryset_by_description = queryset_by_description.difference(queryset_by_author, queryset_by_title)
+        queryset_by_author = queryset_by_author.difference(queryset_by_title)
+
+        serializer_title = AllOriginSerializer(queryset_by_title, many=True)
+        serializer_author = AllOriginSerializer(queryset_by_author, many=True)
+        serializer_description = AllOriginSerializer(queryset_by_description, many=True)
+
+        content = {
+            'origin_by_title': serializer_title.data,
+            'origin_by_author': serializer_author.data,
+            'origin_by_description': serializer_description.data,
+        }
+
+        return Response(content, status=200)
+
+
 class TranslationByLanguageView(APIView):
     permission_classes = [permissions.AllowAny]
 
@@ -147,22 +185,6 @@ class TranslationByLanguageView(APIView):
             return Response(status=400)
 
         serializer = TranslationByLanguageSerializer(translations, many=True)
-
-        content = {'data': serializer.data}
-
-        return Response(content)
-
-
-class ReadOriginView(APIView):
-    permission_classes = [permissions.AllowAny]
-
-    renderer_classes = [JSONRenderer]
-
-    def get(self, request):
-        pk = int(request.GET.get('origin', -1))
-
-        origin = get_object_or_404(Origin, pk=pk)
-        serializer = ReadOriginSerializer(origin)
 
         content = {'data': serializer.data}
 
@@ -197,7 +219,7 @@ class ReadTranslationView(APIView):
 
 
 class MakeTranslationView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, BlacklistPermission]
 
     renderer_classes = [JSONRenderer]
 
@@ -277,7 +299,7 @@ class AllVersionView(APIView):
 
 
 class DeleteVersionView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, BlacklistPermission]
 
     renderer_classes = [JSONRenderer]
 
@@ -333,13 +355,13 @@ class OriginCommentView(APIView):
         return Response(content)
 
 
-class MakeOriginCommentView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+class CreateCommentOriginView(APIView):
+    permission_classes = [permissions.IsAuthenticated, BlacklistPermission]
 
     renderer_classes = [JSONRenderer]
 
     def post(self, request):
-        comment_serializer = MakeOriginCommentSerializer(data=request.data)
+        comment_serializer = MakeCommentOriginSerializer(data=request.data)
 
         if comment_serializer.is_valid():
             comment_serializer.save()
@@ -348,8 +370,23 @@ class MakeOriginCommentView(APIView):
         return Response(comment_serializer.errors, status=400)
 
 
+class ChangeCommentOriginView(APIView):
+    permission_classes = [ModeratorPermission]
+
+    renderer_classes = [JSONRenderer]
+
+    def delete(self, request):
+        comment_id = int(request.POST.get('comment', -1))
+
+        comment = get_object_or_404(CommentOrigin, id=comment_id)
+
+        comment.delete()
+
+        return Response(status=200)
+
+
 class MakeRateView(APIView):
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, BlacklistPermission]
 
     renderer_classes = [JSONRenderer]
 
@@ -385,4 +422,3 @@ class MakeRateView(APIView):
         return Response({
             'errors': "Request rate doesn't exist"
         }, status=400)
-
