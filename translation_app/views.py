@@ -265,7 +265,7 @@ class MakeTranslationView(APIView):
                 Version.objects.create(translation=translation, version_link=file)
 
                 return Response(status=200)
-            return Response(serializer_version.errors, status=400)
+            return Response(serializer_file.errors, status=400)
         return Response({'errors': 'user is not author of translation'}, status=400)
 
     def delete(self, request):
