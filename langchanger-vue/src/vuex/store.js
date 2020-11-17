@@ -68,7 +68,7 @@ const store = new Vuex.Store({
         form.append("email", credentials.email)
         form.append("password", credentials.password)
 
-        axios.post(host + '/auth/token/login/', form)
+        axios.post(host + 'auth/token/login/', form)
             .then((response) => {
             const token = response.data.data.attributes.auth_token
             localStorage.setItem('access_token', token)
